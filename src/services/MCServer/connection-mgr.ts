@@ -5,46 +5,33 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import { debug, log } from '@drazisil/mco-logger'
+import logger from '@drazisil/mco-logger'
 import { Socket } from 'net'
-import { IAppConfiguration } from '../../../config/index'
 import { NPS_COMMANDS } from '../../structures'
 import { IRawPacket } from '../../types'
+import { EMessageDirection, MessageNode } from '../MCOTS/message-node'
 import { defaultHandler } from '../MCOTS/tcp-manager'
 import { DatabaseManager } from '../shared/database-manager'
-import { TCPConnection } from './tcpConnection'
 import { NPSPacketManager } from './nps-packet-manager'
-import { EMessageDirection, MessageNode } from '../MCOTS/message-node'
+import { TCPConnection } from './tcpConnection'
 
-/**
- * @module ConnectionMgr
- */
-
-/**
- * @class
- * @property {IAppSettings} config
- * @property {module:DatabaseManager} databaseManager
- * @property {module:ConnectionObj[]} connections
- * @property {string[]} banList
- */
-export class SessionManager {
-  config: IAppConfiguration
-  databaseMgr: DatabaseManager
+export class ConnectionManager {
+  static _instance: ConnectionManager
+  databaseMgr = DatabaseManager.getInstance()
   connections: TCPConnection[]
   newConnectionId: number
   banList: string[]
   serviceName: string
-  /**
-   * Creates an instance of ConnectionMgr.
-   * @param {module:DatabaseManager} databaseManager
-   * @param {IAppSettings} appSettings
-   */
-  constructor(
-    databaseManager: DatabaseManager,
-    appSettings: IAppConfiguration,
-  ) {
-    this.config = appSettings
-    this.databaseMgr = databaseManager
+
+  public static getInstance(): ConnectionManager {
+    if (!ConnectionManager._instance) {
+      ConnectionManager._instance = new ConnectionManager()
+    }
+    return ConnectionManager._instance
+  }
+
+  private constructor() {
+    this.databaseMgr = DatabaseManager.getInstance()
     /**
      * @type {module:ConnectionObj[]}
      */
@@ -57,24 +44,28 @@ export class SessionManager {
     this.serviceName = 'mcoserver:ConnectionMgr'
   }
 
+  newConnection(connectionId: string, socket: Socket): TCPConnection {
+    return new TCPConnection(connectionId, socket, this)
+  }
+
   /**
    * Check incoming data and route it to the correct handler based on localPort
    * @param {IRawPacket} rawPacket
    * @return {Promise} {@link module:ConnectionObj~ConnectionObj}
    */
   async processData(rawPacket: IRawPacket): Promise<TCPConnection> {
-    const npsPacketManager = new NPSPacketManager(this.databaseMgr, this.config)
+    const npsPacketManager = new NPSPacketManager()
 
     const { remoteAddress, localPort, data } = rawPacket
 
     // Log the packet as debug
-    debug(
-      `logging raw packet',
-      ${{
+    logger.debug(
+      `logging raw packet,
+      ${JSON.stringify({
         remoteAddress,
         localPort,
         data: data.toString('hex'),
-      }}`,
+      })}`,
       { service: this.serviceName },
     )
 
@@ -82,16 +73,16 @@ export class SessionManager {
       case 8226:
       case 8228:
       case 7003: {
-        debug(
-          `Recieved NPS packet',
-          ${{
+        logger.debug(
+          `Recieved NPS packet,
+          ${JSON.stringify({
             opCode: rawPacket.data.readInt16BE(0),
             msgName1: npsPacketManager.msgCodetoName(
               rawPacket.data.readInt16BE(0),
             ),
             msgName2: this.getNameFromOpCode(rawPacket.data.readInt16BE(0)),
             localPort,
-          }}`,
+          })}`,
           { service: this.serviceName },
         )
         try {
@@ -102,7 +93,7 @@ export class SessionManager {
       }
 
       case 43_300: {
-        debug(
+        logger.debug(
           'Recieved MCOTS packet',
           { service: this.serviceName },
           // {
@@ -115,13 +106,13 @@ export class SessionManager {
         )
         const newNode = new MessageNode(EMessageDirection.RECEIVED)
         newNode.deserialize(rawPacket.data)
-        debug(JSON.stringify(newNode), { service: this.serviceName })
+        logger.debug(JSON.stringify(newNode), { service: this.serviceName })
 
         return defaultHandler(rawPacket)
       }
 
       default:
-        debug(JSON.stringify(rawPacket), { service: this.serviceName })
+        logger.debug(JSON.stringify(rawPacket), { service: this.serviceName })
         throw new Error(
           `We received a packet on port ${localPort}. We don't what to do yet, going to throw so the message isn't lost.`,
         )
@@ -174,19 +165,13 @@ export class SessionManager {
   findConnectionByAddressAndPort(
     remoteAddress: string,
     localPort: number,
-  ): TCPConnection {
-    const result = this.connections.find(connection => {
+  ): TCPConnection | undefined {
+    return this.connections.find(connection => {
       const match =
         remoteAddress === connection.remoteAddress &&
         localPort === connection.localPort
       return match
     })
-    if (result === undefined) {
-      throw new Error(
-        `Unable to locate connection for ${remoteAddress}:${localPort}`,
-      )
-    }
-    return result
   }
 
   /**
@@ -263,7 +248,7 @@ export class SessionManager {
 
     const con = this.findConnectionByAddressAndPort(remoteAddress, localPort)
     if (con !== undefined) {
-      log(
+      logger.log(
         `[connectionMgr] I have seen connections from ${remoteAddress} on ${localPort} before`,
         { service: this.serviceName },
       )
@@ -271,12 +256,11 @@ export class SessionManager {
       return con
     }
 
-    const newConnection = new TCPConnection(
+    const newConnection = this.newConnection(
       `${Date.now().toString()}_${this.newConnectionId}`,
       socket,
-      this,
     )
-    log(
+    logger.log(
       `[connectionMgr] I have not seen connections from ${remoteAddress} on ${localPort} before, adding it.`,
       { service: this.serviceName },
     )

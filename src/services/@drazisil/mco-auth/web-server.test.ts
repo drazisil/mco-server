@@ -6,12 +6,12 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import { expect, test } from '@jest/globals'
-import { AuthLogin } from '../src/services/AuthLogin/index'
+import { AuthLogin } from './index'
 
 test('WebServer', () => {
   try {
     // eslint-disable-next-line no-unused-vars
-    const _ = new AuthLogin()
+    const _ = AuthLogin.getInstance()
     expect(true).toBeTruthy()
   } catch (error) {
     expect(error).toBeFalsy()

@@ -1,0 +1,21 @@
+[req]
+req_extensions = v3_req
+prompt = no
+distinguished_name = dn
+
+[dn]
+CN = mcouniverse.com
+emailAddress = admin@mcouniverse.com
+O = MCOUniverse
+L = New York
+C = US
+
+[ v3_req ]
+basicConstraints=CA:TRUE
+subjectAltName = critical, @alt_names
+extendedKeyUsage=serverAuth,clientAuth
+
+# List of all the other DNS names that the certificate should work for.
+# alt_names is a name of my own invention
+[ alt_names ]
+DNS.1 = localhost

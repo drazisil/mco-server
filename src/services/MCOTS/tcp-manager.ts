@@ -5,7 +5,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import { log } from '@drazisil/mco-logger'
+import logger from '@drazisil/mco-logger'
 import { ClientConnectMessage } from '../MCServer/client-connect-msg'
 import { GenericReplyMessage } from '../MCServer/generic-reply-msg'
 import { GenericRequestMessage } from '../MCServer/generic-request-msg'
@@ -23,7 +23,7 @@ import { IRawPacket } from '../../types'
  */
 
 const mcotServer = new MCOTServer()
-const databaseManager = new DatabaseManager()
+const databaseManager = DatabaseManager.getInstance()
 
 export type ConnectionWithPacket = {
   connection: TCPConnection
@@ -47,12 +47,12 @@ async function compressIfNeeded(
 ): Promise<ConnectionWithPacket> {
   // Check if compression is needed
   if (packet.getLength() < 80) {
-    log('Too small, should not compress', {
+    logger.log('Too small, should not compress', {
       service: 'mcoserver:MCOTSServer',
       level: 'debug',
     })
   } else {
-    log('This packet should be compressed', {
+    logger.log('This packet should be compressed', {
       service: 'mcoserver:MCOTSServer',
       level: 'debug',
     })
@@ -72,7 +72,7 @@ async function encryptIfNeeded(
 ): Promise<ConnectionWithPacket> {
   // Check if encryption is needed
   if (packet.flags - 8 >= 0) {
-    log('encryption flag is set', {
+    logger.log('encryption flag is set', {
       service: 'mcoserver:MCOTSServer',
       level: 'debug',
     })
@@ -83,7 +83,7 @@ async function encryptIfNeeded(
       throw new Error('encryption out on connection is null')
     }
 
-    log(`encrypted packet: ${packet.serialize().toString('hex')}`, {
+    logger.log(`encrypted packet: ${packet.serialize().toString('hex')}`, {
       service: 'mcoserver:MCOTSServer',
       level: 'debug',
     })
@@ -117,16 +117,19 @@ async function socketWriteIfOpen(
       await encryptIfNeeded(connection, compressedPacket)
     ).packet
     // Log that we are trying to write
-    log(
+    logger.log(
       ` Atempting to write seq: ${encryptedPacket.seq} to conn: ${updatedConnection.connection.id}`,
       { service: 'mcoserver:MCOTSServer', level: 'debug' },
     )
 
     // Log the buffer we are writing
-    log(`Writting buffer: ${encryptedPacket.serialize().toString('hex')}`, {
-      service: 'mcoserver:MCOTSServer',
-      level: 'debug',
-    })
+    logger.log(
+      `Writting buffer: ${encryptedPacket.serialize().toString('hex')}`,
+      {
+        service: 'mcoserver:MCOTSServer',
+        level: 'debug',
+      },
+    )
     if (connection.sock.writable) {
       // Write the packet to socket
       connection.sock.write(encryptedPacket.serialize())
@@ -194,14 +197,14 @@ async function clientConnect(
   // Not currently using this
   const newMessage = new ClientConnectMessage(packet.data)
 
-  log(
+  logger.log(
     `[TCPManager] Looking up the session key for ${newMessage.customerId}...`,
     { service: 'mcoserver:MCOTSServer', level: 'debug' },
   )
   const result = await databaseManager.fetchSessionKeyByCustomerId(
     newMessage.customerId,
   )
-  log('[TCPManager] Session Key located!', {
+  logger.log('[TCPManager] Session Key located!', {
     service: 'mcoserver:MCOTSServer',
     level: 'debug',
   })
@@ -218,7 +221,7 @@ async function clientConnect(
   connectionWithKey.appId = newMessage.getAppId()
 
   // Log the session key
-  log(`cust: ${customerId} ID: ${personaId} Name: ${personaName}`, {
+  logger.log(`cust: ${customerId} ID: ${personaId} Name: ${personaName}`, {
     service: 'mcoserver:MCOTSServer',
     level: 'debug',
   })
@@ -335,11 +338,11 @@ async function processInput(
 
     case 'MC_GET_LOBBIES': {
       const result = await mcotServer._getLobbies(conn, node)
-      log('Dumping Lobbies response packet...', {
+      logger.log('Dumping Lobbies response packet...', {
         service: 'mcoserver:MCOTSServer',
         level: 'debug',
       })
-      log(JSON.stringify(result.packetList.join()), {
+      logger.log(JSON.stringify(result.packetList.join()), {
         service: 'mcoserver:MCOTSServer',
         level: 'debug',
       })
@@ -391,7 +394,7 @@ async function messageReceived(
 ): Promise<TCPConnection> {
   const newConnection = con
   if (!newConnection.useEncryption && message.flags && 0x08) {
-    log('Turning on encryption', {
+    logger.log('Turning on encryption', {
       service: 'mcoserver:MCOTSServer',
       level: 'debug',
     })
@@ -412,12 +415,12 @@ async function messageReceived(
          * Attempt to decrypt message
          */
         const encryptedBuffer = Buffer.from(message.data)
-        log(
+        logger.log(
           `Full packet before decrypting: ${encryptedBuffer.toString('hex')}`,
           { service: 'mcoserver:MCOTSServer', level: 'debug' },
         )
 
-        log(
+        logger.log(
           `Message buffer before decrypting: ${encryptedBuffer.toString(
             'hex',
           )}`,
@@ -427,15 +430,18 @@ async function messageReceived(
           throw new Error('ARC4 decrypter is null')
         }
 
-        log(`Using encryption id: ${newConnection.enc.getId()}`, {
+        logger.log(`Using encryption id: ${newConnection.enc.getId()}`, {
           service: 'mcoserver:MCOTSServer',
           level: 'debug',
         })
         const deciphered = newConnection.enc.decrypt(encryptedBuffer)
-        log(`Message buffer after decrypting: ${deciphered.toString('hex')}`, {
-          service: 'mcoserver:MCOTSServer',
-          level: 'debug',
-        })
+        logger.log(
+          `Message buffer after decrypting: ${deciphered.toString('hex')}`,
+          {
+            service: 'mcoserver:MCOTSServer',
+            level: 'debug',
+          },
+        )
 
         if (deciphered.readUInt16LE(0) <= 0) {
           throw new Error('Failure deciphering message, exiting.')
@@ -473,14 +479,14 @@ export async function defaultHandler(
   const messageNode = new MessageNode(EMessageDirection.RECEIVED)
   messageNode.deserialize(data)
 
-  log(
+  logger.log(
     `Received TCP packet',
-    ${{
+    ${JSON.stringify({
       localPort,
       remoteAddress,
       direction: messageNode.direction,
       data: rawPacket.data.toString('hex'),
-    }}`,
+    })}`,
     { service: 'mcoserver:MCOTSServer' },
   )
   messageNode.dumpPacket()

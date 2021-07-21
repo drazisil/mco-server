@@ -41,7 +41,7 @@ export const serverSettings: IAppConfiguration['serverSettings'] = {
   ipServer: 'localhost',
 }
 export const serviceConnections: IAppConfiguration['serviceConnections'] = {
-  databaseURL: 'sqlite: :memory',
+  databaseURL: 'db.mco.db',
 }
 export const defaultLogLevel: IAppConfiguration['defaultLogLevel'] = 'info'
 

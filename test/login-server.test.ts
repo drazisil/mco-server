@@ -7,9 +7,8 @@
 
 import { expect, it } from '@jest/globals'
 import { LoginServer } from '../src/services/LoginServer/index'
-import { fakeDatabaseManager } from './helpers'
 
-const loginServer = new LoginServer(fakeDatabaseManager)
+const loginServer = new LoginServer()
 
 it('LoginServer', async () => {
   const { customerId, userId } = await loginServer._npsGetCustomerIdByContextId(

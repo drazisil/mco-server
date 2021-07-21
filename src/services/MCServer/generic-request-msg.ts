@@ -5,7 +5,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import { log } from '@drazisil/mco-logger'
+import logger from '@drazisil/mco-logger'
 
 /**
  * @module GenericRequestMsg
@@ -79,13 +79,13 @@ export class GenericRequestMessage {
    * @return {void}
    */
   dumpPacket(): void {
-    log(
+    logger.log(
       `GenericRequest',
-      ${{
+      ${JSON.stringify({
         msgNo: this.msgNo,
         data: this.data.toString('hex'),
         data2: this.data2.toString('hex'),
-      }}`,
+      })}`,
       { service: this.serviceName },
     )
   }

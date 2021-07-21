@@ -7,14 +7,10 @@
 
 import { expect, it, describe } from '@jest/globals'
 import { NPSPacketManager } from '../src/services/MCServer/nps-packet-manager'
-import { fakeDatabaseManager, fakeSettings } from './helpers'
 
 describe('NPSPacketManager', () => {
   it('NPSPacketManger', async () => {
-    const npsPacketManager = new NPSPacketManager(
-      fakeDatabaseManager,
-      fakeSettings,
-    )
+    const npsPacketManager = new NPSPacketManager()
     expect(npsPacketManager.msgCodetoName(0x2_29)).toEqual('NPS_MINI_USER_LIST')
   })
 })

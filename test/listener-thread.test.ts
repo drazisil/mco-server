@@ -6,30 +6,29 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import { expect, it } from '@jest/globals'
+import { Socket } from 'net'
+import { ConnectionManager } from '../src/services/MCServer/connection-mgr'
 import { ListenerThread } from '../src/services/MCServer/listener-thread'
-import {
-  fakeConnectionMgr,
-  fakeSocket,
-  FakeConnectionConstructor,
-} from './helpers'
 
-// TODO: Determine way to mock server
-// it('ListenerThread', async () => {
-//   const listenerThread = new ListenerThread(fakeConfig);
+class FakeSocket extends Socket {
+  localPort: number
+  remoteAddress: string | undefined
 
-//   const server = await listenerThread.startTCPListener(3000, fakeConnectionMgr);
+  constructor() {
+    super()
+    this.localPort = 7003
+    delete this.remoteAddress
+  }
+}
 
-//   listenerThread._listener(fakeSocket, fakeConnectionMgr);
-//   server.close();
-// });
+const fakeSocket = new FakeSocket()
 
 it('ListenerThread - _onData', async () => {
   const listenerThread = new ListenerThread()
 
-  const fakeConnection1 = new FakeConnectionConstructor(
+  const fakeConnection1 = ConnectionManager.getInstance().newConnection(
     'test_connction_1',
     fakeSocket,
-    fakeConnectionMgr,
   )
   fakeConnection1.remoteAddress = '0.0.0.0'
 
@@ -41,13 +40,12 @@ it('ListenerThread - _onData', async () => {
     expect(error.message).not.toEqual('Remote address is empty')
   }
 
-  const fakeConnection3 = new FakeConnectionConstructor(
+  const fakeConnection3 = ConnectionManager.getInstance().newConnection(
     'test_connction_3',
     fakeSocket,
-    fakeConnectionMgr,
   )
   fakeConnection3.sock = fakeSocket
-  fakeConnection3.mgr = fakeConnectionMgr
+  fakeConnection3.mgr = ConnectionManager.getInstance()
   fakeConnection3.remoteAddress = undefined
 
   expect(fakeConnection3.remoteAddress).toEqual(undefined)
@@ -55,6 +53,6 @@ it('ListenerThread - _onData', async () => {
   try {
     await listenerThread._onData(Buffer.alloc(5), fakeConnection3)
   } catch (error) {
-    expect(error.message).toContain('Remote address is empty')
+    expect(error.message).toContain('Unable to locate name for opCode 0')
   }
 })

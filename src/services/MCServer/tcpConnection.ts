@@ -7,7 +7,7 @@
 
 import { Cipher, createCipheriv, createDecipheriv, Decipher } from 'crypto'
 import { Socket } from 'net'
-import { SessionManager } from './connection-mgr'
+import { ConnectionManager } from './connection-mgr'
 import { EncryptionManager } from './encryption-mgr'
 
 /**
@@ -57,7 +57,7 @@ export class TCPConnection {
   encLobby: { cipher: Cipher | undefined; decipher: Decipher | undefined }
   enc: EncryptionManager
   isSetupComplete: boolean
-  mgr: SessionManager
+  mgr: ConnectionManager
   inQueue: boolean
   decryptedCmd: Buffer
   encryptedCmd: Buffer
@@ -67,7 +67,7 @@ export class TCPConnection {
    * @param {import("net").Socket} sock
    * @param {module:ConnectionMgr.ConnectionMgr} mgr
    */
-  constructor(connectionId: string, sock: Socket, mgr: SessionManager) {
+  constructor(connectionId: string, sock: Socket, mgr: ConnectionManager) {
     this.id = connectionId
     this.appId = 0
     /**

@@ -5,7 +5,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import { log } from '@drazisil/mco-logger'
+import logger from '@drazisil/mco-logger'
 
 /**
  * @module ClientConnectMsg
@@ -75,16 +75,16 @@ export class ClientConnectMessage {
    * @return {void}
    */
   dumpPacket(): void {
-    log(
+    logger.log(
       `ClientConnectMsg',
-      ${{
+      ${JSON.stringify({
         msgNo: this.msgNo.toString(),
         customerId: this.customerId.toString(),
         personaId: this.personaId.toString(),
         custName: this.custName,
         personaName: this.personaName,
         mcVersion: this.mcVersion.toString('hex'),
-      }}`,
+      })}`,
       { service: 'mcoserver:ClientConnectMsg' },
     )
   }

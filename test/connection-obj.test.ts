@@ -5,25 +5,19 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import { Socket } from 'net'
-import { expect, it, beforeEach, describe } from '@jest/globals'
-import pkg from 'sinon'
-import logger from '@drazisil/mco-logger'
-import { SessionManager } from '../src/services/MCServer/connection-mgr'
+import { beforeEach, describe, expect, it, jest } from '@jest/globals'
+import { Socket as fakeSocket } from 'net'
+import { ConnectionManager as fakeConnectionManager } from '../src/services/MCServer/connection-mgr'
 import { TCPConnection } from '../src/services/MCServer/tcpConnection'
-const { mock, createStubInstance } = pkg
 
-const fakeLogger = mock(logger)
-fakeLogger.expects('log').withArgs().atLeast(1)
-
-// TODO: REplace with testdouble
-const fakeConnectionManager = createStubInstance(SessionManager)
+jest.mock('../src/services/MCServer/connection-mgr')
+jest.mock('net')
 
 it('ConnectionObj', () => {
   const testConnection = new TCPConnection(
     'abc',
-    new Socket(),
-    fakeConnectionManager,
+    new fakeSocket(),
+    fakeConnectionManager.getInstance(),
   )
 
   expect(testConnection.status).toEqual('Inactive')
@@ -39,8 +33,16 @@ describe('ConnectionObj cross-comms', () => {
   let testConn2: TCPConnection
 
   beforeEach(() => {
-    testConn1 = new TCPConnection('def', new Socket(), fakeConnectionManager)
-    testConn2 = new TCPConnection('ghi', new Socket(), fakeConnectionManager)
+    testConn1 = new TCPConnection(
+      'def',
+      new fakeSocket(),
+      fakeConnectionManager.getInstance(),
+    )
+    testConn2 = new TCPConnection(
+      'ghi',
+      new fakeSocket(),
+      fakeConnectionManager.getInstance(),
+    )
     testConn1.setEncryptionKey(Buffer.from('abc123', 'hex'))
     testConn2.setEncryptionKey(Buffer.from('abc123', 'hex'))
   })
